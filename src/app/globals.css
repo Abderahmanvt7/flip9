@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Add perspective to the parent container for better 3D effect */
+.card-container {
+  perspective: 1000px;
+}
