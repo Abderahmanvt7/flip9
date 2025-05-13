@@ -39,9 +39,12 @@ function GameContent() {
   useEffect(() => {
     if (gameId) {
       setCurrentGameId(gameId);
-      setGameState('join');
+      // Only set to 'join' if we're not already in 'waiting' state (which means we're the host)
+      if (gameState === 'welcome') {
+        setGameState('join');
+      }
     }
-  }, [gameId]);
+  }, [gameId, gameState]);
 
   // Handle game state updates from polling
   useEffect(() => {
@@ -86,11 +89,10 @@ function GameContent() {
       const { gameId, gameState } = await response.json();
       setCurrentGameId(gameId);
       setPlayerRole(1); // Host is player 1
+      setGameState('waiting'); // Set to waiting first
 
       // Update URL with game ID (for sharing)
       router.push(`?gameId=${gameId}`);
-
-      setGameState('waiting');
     } catch (error) {
       console.error('Error creating game:', error);
     }
@@ -109,7 +111,16 @@ function GameContent() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to join game');
+        const errorData = await response.json();
+        if (
+          response.status === 400 &&
+          errorData.error === 'Host cannot join their own game'
+        ) {
+          // If the player is the host, show them the waiting room instead
+          setGameState('waiting');
+          return;
+        }
+        throw new Error(errorData.error || 'Failed to join game');
       }
 
       const { gameState } = await response.json();
@@ -123,6 +134,8 @@ function GameContent() {
       mutate(); // Refresh game state
     } catch (error) {
       console.error('Error joining game:', error);
+      // Handle other errors appropriately
+      alert(error instanceof Error ? error.message : 'Failed to join game');
     }
   };
 

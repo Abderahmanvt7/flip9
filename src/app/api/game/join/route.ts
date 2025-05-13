@@ -36,6 +36,14 @@ export async function POST(request: Request) {
       );
     }
 
+    // Check if the player trying to join is the host
+    if (gameState.hostPlayer === guestPlayer) {
+      return NextResponse.json(
+        { error: 'Host cannot join their own game' },
+        { status: 400 }
+      );
+    }
+
     // Check if guest player name is same as host player
     if (gameState.hostPlayer === guestPlayer) {
       return NextResponse.json(
