@@ -29,7 +29,7 @@ export async function POST(request: Request) {
 
     // Store game state in KV store
     await kv.set(`game:${gameId}`, JSON.stringify(gameState));
-    await kv.expire(`game:${gameId}`, 60 * 60 * 24); // Expire after 24 hours
+    await kv.expire(`game:${gameId}`, 60 * 60); // Expire after 1 hour
 
     const response: GameResponse = { gameId, gameState };
     return NextResponse.json(response);
