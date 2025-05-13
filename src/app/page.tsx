@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import WelcomeScreen from './components/WelcomeScreen';
 import GameBoard from './components/GameBoard';
@@ -11,7 +11,8 @@ import useSWR from 'swr';
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-export default function Home() {
+// Create a client component for the game content
+function GameContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const gameId = searchParams.get('gameId');
@@ -200,7 +201,7 @@ export default function Home() {
         <GameBoard
           player1={players.player1}
           player2={players.player2}
-          onGameEnd={() => {}} // Handled by polling now
+          onGameEnd={() => {}}
           gameData={data}
           playerRole={playerRole}
           onCardFlip={handleCardFlip}
@@ -212,5 +213,14 @@ export default function Home() {
         <GameOverModal winner={winner} onPlayAgain={handlePlayAgain} />
       )}
     </main>
+  );
+}
+
+// Main page component
+export default function Home() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <GameContent />
+    </Suspense>
   );
 }
