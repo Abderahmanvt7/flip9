@@ -1,9 +1,9 @@
 'use client';
 
-interface CardProps {
+import { CardState } from '@/app/types/game';
+
+interface CardProps extends Omit<CardState, 'value'> {
   value: number;
-  isFlipped: boolean;
-  isMatched: boolean;
   onClick: () => void;
 }
 

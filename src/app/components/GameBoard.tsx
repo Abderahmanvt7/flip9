@@ -2,110 +2,89 @@
 
 import { useState, useEffect } from 'react';
 import Card from './Card';
+import { CardState, GameState } from '@/app/types/game';
 
 interface GameBoardProps {
   player1: string;
   player2: string;
   onGameEnd: (winner: string) => void;
-}
-
-interface CardState {
-  value: number;
-  isFlipped: boolean;
-  isMatched: boolean;
+  gameData: GameState;
+  playerRole: 1 | 2 | null;
+  onCardFlip: (cardIndex: number) => void;
+  onResetCards: () => void;
 }
 
 export default function GameBoard({
   player1,
   player2,
   onGameEnd,
+  gameData,
+  playerRole,
+  onCardFlip,
+  onResetCards,
 }: GameBoardProps) {
-  const [cards, setCards] = useState<CardState[]>([]);
-  const [currentPlayer, setCurrentPlayer] = useState(1);
-  const [currentTarget, setCurrentTarget] = useState(1);
-  const [flippedCards, setFlippedCards] = useState<number[]>([]);
-  const [isGameOver, setIsGameOver] = useState(false);
+  const [lastMoveTime, setLastMoveTime] = useState<number | null>(null);
 
-  // Initialize game
+  // Monitor game state for incorrect card flips and handle resetting cards
   useEffect(() => {
-    initializeGame();
-  }, []);
-
-  const initializeGame = () => {
-    // Create array of numbers 1-9 and shuffle them
-    const numbers = Array.from({ length: 9 }, (_, i) => i + 1);
-    const shuffled = [...numbers].sort(() => Math.random() - 0.5);
-
-    setCards(
-      shuffled.map((value) => ({
-        value,
-        isFlipped: false,
-        isMatched: false,
-      }))
-    );
-
-    setCurrentPlayer(1);
-    setCurrentTarget(1);
-    setFlippedCards([]);
-    setIsGameOver(false);
-  };
-
-  const handleCardClick = (index: number) => {
-    if (isGameOver || cards[index].isFlipped || cards[index].isMatched) return;
-
-    const newCards = [...cards];
-    newCards[index].isFlipped = true;
-    setCards(newCards);
-
-    const flippedValue = cards[index].value;
-    const newFlippedCards = [...flippedCards, index];
-
-    if (flippedValue === currentTarget) {
-      // Correct flip
-      if (currentTarget === 9) {
-        // Game won - mark all flipped cards as matched
-        const updatedCards = newCards.map((card, i) => ({
-          ...card,
-          isMatched: card.isFlipped ? true : card.isMatched,
-        }));
-        setCards(updatedCards);
-        setIsGameOver(true);
-        onGameEnd(currentPlayer === 1 ? player1 : player2);
-      } else {
-        // Continue turn
-        setCurrentTarget(currentTarget + 1);
-        setFlippedCards(newFlippedCards);
-      }
-    } else {
-      // Incorrect flip
+    if (gameData && gameData.incorrectCard !== undefined) {
+      // Set a delay to show the card before resetting
       setTimeout(() => {
-        // Flip all cards back
-        const resetCards = cards.map((card, i) => ({
-          ...card,
-          isFlipped: newFlippedCards.includes(i) ? false : card.isFlipped,
-        }));
-        setCards(resetCards);
-        setFlippedCards([]);
-        setCurrentTarget(1);
-        setCurrentPlayer(currentPlayer === 1 ? 2 : 1);
+        onResetCards();
       }, 1000);
     }
+  }, [gameData, onResetCards]);
+
+  // Handle card click for current player only
+  const handleCardClick = (index: number) => {
+    // Only allow clicks from the current player
+    if (gameData.currentPlayer !== playerRole) return;
+
+    // Prevent clicking on already flipped or matched cards
+    if (gameData.cards[index].isFlipped || gameData.cards[index].isMatched)
+      return;
+
+    // Prevent rapid clicking
+    const now = Date.now();
+    if (lastMoveTime && now - lastMoveTime < 300) return;
+    setLastMoveTime(now);
+
+    // Call the API to flip the card
+    onCardFlip(index);
   };
+
+  // Determine if it's this player's turn
+  const isMyTurn = gameData.currentPlayer === playerRole;
+
+  // Get the current player's name
+  const currentPlayerName = gameData.currentPlayer === 1 ? player1 : player2;
+
+  // Check if game is waiting for the player
+  const waitingMessage = isMyTurn
+    ? "It's your turn"
+    : `Waiting for ${currentPlayerName}'s move...`;
 
   return (
     <div className='min-h-screen bg-gray-100 py-8'>
       <div className='max-w-2xl mx-auto px-4'>
         <div className='bg-white rounded-lg shadow-lg p-6 mb-8'>
           <h2 className='text-2xl font-bold text-center mb-4'>
-            {currentPlayer === 1 ? player1 : player2}'s Turn
+            {currentPlayerName}'s Turn
           </h2>
           <p className='text-center text-gray-600'>
-            Find number: {currentTarget}
+            Find number: {gameData.currentTarget}
+          </p>
+          <p
+            className={`text-center mt-2 font-medium ${
+              isMyTurn ? 'text-green-600' : 'text-yellow-600'
+            }`}
+          >
+            {waitingMessage}
           </p>
         </div>
 
         <div className='grid grid-cols-3 gap-4 justify-items-center'>
-          {cards.map((card, index) => (
+          {gameData.cards.map((card: CardState, index: number) => (
             <Card
               key={index}
               value={card.value}
@@ -116,13 +95,26 @@ export default function GameBoard({
           ))}
         </div>
 
-        <div className='mt-8 text-center'>
-          <button
-            onClick={initializeGame}
-            className='bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors duration-200'
-          >
-            New Game
-          </button>
+        <div className='mt-8 flex justify-center'>
+          <div className='bg-white rounded-lg shadow p-4 max-w-xs w-full'>
+            <h3 className='text-lg font-semibold mb-2 text-center'>Players</h3>
+            <div className='space-y-2'>
+              <div
+                className={`p-2 rounded ${
+                  gameData.currentPlayer === 1 ? 'bg-blue-100' : ''
+                }`}
+              >
+                {player1} {playerRole === 1 ? '(You)' : ''}
+              </div>
+              <div
+                className={`p-2 rounded ${
+                  gameData.currentPlayer === 2 ? 'bg-blue-100' : ''
+                }`}
+              >
+                {player2} {playerRole === 2 ? '(You)' : ''}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -1,62 +1,76 @@
-# Flip in Order - A Memory Game
+# Flip9 - Multiplayer Memory Game
 
-<div align="center">
-  <h2>🃏 Flip in Order</h2>
-  <p>A two-player, turn-based memory game built with Next.js and Tailwind CSS.</p>
-  <p>Challenge your memory and sequential logic skills!</p>
-</div>
-
-## Game Overview
-
-Flip in Order is a browser-based game where two players compete to flip over all 9 cards in the correct ascending order from 1 to 9 during a single uninterrupted turn. The cards are shuffled and placed face-down in a 3x3 grid.
+A multiplayer memory card game where players take turns flipping cards in numerical order from 1 to 9. The game allows two players to play together from different devices.
 
 ## Features
 
-- **Turn-Based Gameplay**: Players alternate turns, starting from number 1 each time.
-- **Sequential Logic Challenge**: Flip cards in the correct order to win.
-- **Smooth Animations**: Enjoy smooth card flip animations using Tailwind CSS.
-- **Responsive Design**: Play on any device with a modern, responsive UI.
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js and npm or pnpm installed on your machine.
-
-### Installation
-
-1. Clone the repository:
-
-   ```bash
-   git clone https://github.com/yourusername/flip-in-order.git
-   cd flip-in-order
-   ```
-
-2. Install dependencies:
-
-   ```bash
-   pnpm install
-   ```
-
-3. Run the development server:
-
-   ```bash
-   pnpm dev
-   ```
-
-4. Open [http://localhost:3000](http://localhost:3000) in your browser to start playing.
+- Real-time multiplayer gameplay without WebSockets
+- Vercel-compatible implementation using Vercel KV as the datastore
+- Share a link to invite friends to play
+- Mobile-responsive design
 
 ## How to Play
 
-1. Enter player names on the welcome screen.
-2. Click "Start Game" to begin.
-3. Players take turns flipping cards to find numbers in ascending order.
-4. The first player to flip all cards from 1 to 9 in order wins.
+1. The first player creates a game and shares the link with a friend
+2. The second player joins by clicking the link
+3. Players take turns flipping cards, looking for numbers 1 through 9 in sequence
+4. If a player flips an incorrect card, their turn ends, and they start again from 1
+5. The first player to find 9 wins the game
 
-## Contributing
+## Tech Stack
 
-Contributions are welcome! Please open an issue or submit a pull request.
+- Next.js 14 (App Router)
+- TypeScript
+- Tailwind CSS
+- Vercel KV (for state management)
+- SWR (for data fetching and polling)
+
+## Local Development
+
+First, install dependencies:
+
+```bash
+npm install
+# or
+yarn
+```
+
+You'll need Vercel KV for the multiplayer functionality. You can use a local Redis instance for development:
+
+1. Create a new Vercel project and add a KV database
+2. Get your KV credentials from the Vercel Dashboard
+3. Copy `src/env.local.example` to `.env.local` and add your KV credentials
+
+Then run the development server:
+
+```bash
+npm run dev
+# or
+yarn dev
+```
+
+Visit [http://localhost:3000](http://localhost:3000) to play the game locally.
+
+## Deployment
+
+The easiest way to deploy is with Vercel:
+
+1. Push your code to a Git repository
+2. Create a new project in Vercel and link it to your repository
+3. Add your KV credentials to the Environment Variables in the Vercel dashboard
+4. Deploy
+
+## How Multiplayer Works
+
+This game uses a polling-based approach instead of WebSockets for Vercel compatibility:
+
+1. Game state is stored in Vercel KV
+2. Players poll for updates to the game state every 2 seconds
+3. When a player makes a move, they update the game state in KV
+4. The opponent receives the updated state on the next poll
+
+This approach allows for near real-time gameplay without requiring WebSockets, making it compatible with Vercel's serverless architecture.
 
 ## License
 
-This project is licensed under the MIT License.
+MIT

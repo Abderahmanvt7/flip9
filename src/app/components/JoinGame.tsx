@@ -2,11 +2,11 @@
 
 import { useState } from 'react';
 
-interface WelcomeScreenProps {
-  onStartGame: (player1: string) => void;
+interface JoinGameProps {
+  onJoinGame: (playerName: string) => void;
 }
 
-export default function WelcomeScreen({ onStartGame }: WelcomeScreenProps) {
+export default function JoinGame({ onJoinGame }: JoinGameProps) {
   const [playerName, setPlayerName] = useState('');
   const [error, setError] = useState('');
 
@@ -19,22 +19,15 @@ export default function WelcomeScreen({ onStartGame }: WelcomeScreenProps) {
     }
 
     setError('');
-    onStartGame(playerName.trim());
+    onJoinGame(playerName.trim());
   };
 
   return (
     <div className='min-h-screen flex items-center justify-center bg-gray-100'>
       <div className='bg-white p-8 rounded-lg shadow-lg w-full max-w-md'>
         <h1 className='text-3xl font-bold text-center mb-8 text-gray-800'>
-          Flip in Order
+          Join Game
         </h1>
-
-        <div className='text-center mb-6'>
-          <p className='text-gray-600'>
-            Challenge your friend to match the numbers in order from 1 to 9
-          </p>
-        </div>
-
         <form onSubmit={handleSubmit} className='space-y-6'>
           <div>
             <label
@@ -57,7 +50,7 @@ export default function WelcomeScreen({ onStartGame }: WelcomeScreenProps) {
             type='submit'
             className='w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors duration-200'
           >
-            Create Game
+            Join Game
           </button>
         </form>
       </div>
