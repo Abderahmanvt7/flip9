@@ -26,6 +26,7 @@ function GameContent() {
   } | null>(null);
   const [winner, setWinner] = useState<string | null>(null);
   const [currentGameId, setCurrentGameId] = useState<string | null>(null);
+  const [currentGameCode, setCurrentGameCode] = useState<string | null>(null);
   const [playerRole, setPlayerRole] = useState<1 | 2 | null>(null);
 
   // Poll for game state updates
@@ -49,6 +50,11 @@ function GameContent() {
   // Handle game state updates from polling
   useEffect(() => {
     if (data) {
+      // Update the game code when we get the data
+      if (data.gameCode && !currentGameCode) {
+        setCurrentGameCode(data.gameCode);
+      }
+
       // If we're waiting for another player to join
       if (data.status === 'waiting' && gameState === 'waiting') {
         // Keep waiting
@@ -70,7 +76,7 @@ function GameContent() {
         setGameState('gameOver');
       }
     }
-  }, [data, gameState]);
+  }, [data, gameState, currentGameCode]);
 
   const handleStartGame = async (player1: string) => {
     try {
@@ -88,6 +94,7 @@ function GameContent() {
 
       const { gameId, gameState } = await response.json();
       setCurrentGameId(gameId);
+      setCurrentGameCode(gameState.gameCode);
       setPlayerRole(1); // Host is player 1
       setGameState('waiting'); // Set to waiting first
 
@@ -98,8 +105,11 @@ function GameContent() {
     }
   };
 
-  const handleJoinGame = async (player2: string) => {
-    if (!currentGameId) return;
+  const handleJoinGame = async (player2: string, gameCode?: string) => {
+    // If gameCode is provided, use it; otherwise use currentGameId
+    const requestBody = gameCode
+      ? { gameCode, guestPlayer: player2 }
+      : { gameId: currentGameId, guestPlayer: player2 };
 
     try {
       const response = await fetch('/api/game/join', {
@@ -107,7 +117,7 @@ function GameContent() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ gameId: currentGameId, guestPlayer: player2 }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
@@ -124,6 +134,8 @@ function GameContent() {
       }
 
       const { gameState } = await response.json();
+      setCurrentGameId(gameState.id);
+      setCurrentGameCode(gameState.gameCode);
       setPlayerRole(2); // Guest is player 2
       setPlayers({
         player1: gameState.hostPlayer,
@@ -191,6 +203,7 @@ function GameContent() {
     // Reset game state
     setGameState('welcome');
     setCurrentGameId(null);
+    setCurrentGameCode(null);
     setPlayerRole(null);
     setWinner(null);
 
@@ -201,13 +214,16 @@ function GameContent() {
   return (
     <main>
       {gameState === 'welcome' && (
-        <WelcomeScreen onStartGame={handleStartGame} />
+        <WelcomeScreen
+          onStartGame={handleStartGame}
+          onJoinByCode={handleJoinGame}
+        />
       )}
 
       {gameState === 'join' && <JoinGame onJoinGame={handleJoinGame} />}
 
-      {gameState === 'waiting' && currentGameId && (
-        <WaitingRoom gameId={currentGameId} />
+      {gameState === 'waiting' && currentGameId && currentGameCode && (
+        <WaitingRoom gameId={currentGameId} gameCode={currentGameCode} />
       )}
 
       {gameState === 'playing' && players && data && (

@@ -4,17 +4,31 @@ import { GameState, GameResponse } from '@/app/types/game';
 
 export async function POST(request: Request) {
   try {
-    const { gameId, guestPlayer } = await request.json();
+    const { gameId, gameCode, guestPlayer } = await request.json();
 
-    if (!gameId || !guestPlayer) {
+    if ((!gameId && !gameCode) || !guestPlayer) {
       return NextResponse.json(
-        { error: 'Game ID and guest player name are required' },
+        { error: 'Game ID or game code and guest player name are required' },
         { status: 400 }
       );
     }
 
+    let actualGameId = gameId;
+
+    // If gameCode is provided, resolve it to gameId
+    if (gameCode && !gameId) {
+      const resolvedGameId = await kv.get(`code:${gameCode}`);
+      if (!resolvedGameId) {
+        return NextResponse.json(
+          { error: 'Invalid game code' },
+          { status: 404 }
+        );
+      }
+      actualGameId = resolvedGameId as string;
+    }
+
     // Get current game state
-    const gameStateStr = await kv.get(`game:${gameId}`);
+    const gameStateStr = await kv.get(`game:${actualGameId}`);
 
     if (!gameStateStr) {
       return NextResponse.json({ error: 'Game not found' }, { status: 404 });
@@ -58,7 +72,7 @@ export async function POST(request: Request) {
     gameState.lastUpdated = Date.now();
 
     // Save updated game state
-    await kv.set(`game:${gameId}`, JSON.stringify(gameState));
+    await kv.set(`game:${actualGameId}`, JSON.stringify(gameState));
 
     const response: GameResponse = { gameState };
     return NextResponse.json(response);

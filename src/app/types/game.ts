@@ -6,6 +6,7 @@ export interface CardState {
 
 export interface GameState {
   id: string;
+  gameCode: string;
   status: 'waiting' | 'active' | 'completed';
   hostPlayer: string;
   guestPlayer: string | null;

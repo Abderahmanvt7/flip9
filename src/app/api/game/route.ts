@@ -3,6 +3,11 @@ import { v4 as uuidv4 } from 'uuid';
 import { kv } from '@vercel/kv';
 import { CardState, GameState, GameResponse } from '@/app/types/game';
 
+// Generate a 6-digit game code
+function generateGameCode(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
 // Create a new game session
 export async function POST(request: Request) {
   try {
@@ -16,8 +21,29 @@ export async function POST(request: Request) {
     }
 
     const gameId = uuidv4();
+    let gameCode = generateGameCode();
+
+    // Ensure the game code is unique
+    let attempts = 0;
+    while (attempts < 10) {
+      const existingGameId = await kv.get(`code:${gameCode}`);
+      if (!existingGameId) {
+        break;
+      }
+      gameCode = generateGameCode();
+      attempts++;
+    }
+
+    if (attempts >= 10) {
+      return NextResponse.json(
+        { error: 'Failed to generate unique game code' },
+        { status: 500 }
+      );
+    }
+
     const gameState: GameState = {
       id: gameId,
+      gameCode,
       status: 'waiting', // waiting, active, completed
       hostPlayer,
       guestPlayer: null,
@@ -27,9 +53,13 @@ export async function POST(request: Request) {
       lastUpdated: Date.now(),
     };
 
-    // Store game state in KV store
+    // Store game state in KV store with gameId
     await kv.set(`game:${gameId}`, JSON.stringify(gameState));
     await kv.expire(`game:${gameId}`, 60 * 60); // Expire after 1 hour
+
+    // Store game code mapping
+    await kv.set(`code:${gameCode}`, gameId);
+    await kv.expire(`code:${gameCode}`, 60 * 60); // Expire after 1 hour
 
     const response: GameResponse = { gameId, gameState };
     return NextResponse.json(response);
@@ -42,20 +72,35 @@ export async function POST(request: Request) {
   }
 }
 
-// Get a game session
+// Get a game session by gameId or gameCode
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const gameId = searchParams.get('gameId');
+    const gameCode = searchParams.get('gameCode');
 
-    if (!gameId) {
+    let actualGameId = gameId;
+
+    // If gameCode is provided, resolve it to gameId
+    if (gameCode && !gameId) {
+      const resolvedGameId = await kv.get(`code:${gameCode}`);
+      if (!resolvedGameId) {
+        return NextResponse.json(
+          { error: 'Invalid game code' },
+          { status: 404 }
+        );
+      }
+      actualGameId = resolvedGameId as string;
+    }
+
+    if (!actualGameId) {
       return NextResponse.json(
-        { error: 'Game ID is required' },
+        { error: 'Game ID or game code is required' },
         { status: 400 }
       );
     }
 
-    const gameStateStr = await kv.get(`game:${gameId}`);
+    const gameStateStr = await kv.get(`game:${actualGameId}`);
 
     if (!gameStateStr) {
       return NextResponse.json({ error: 'Game not found' }, { status: 404 });
